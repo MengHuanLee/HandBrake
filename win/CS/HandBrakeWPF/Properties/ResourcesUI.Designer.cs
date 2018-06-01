@@ -124,7 +124,7 @@ namespace HandBrakeWPF.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Save Picture Size:.
+        ///   Looks up a localized string similar to Dimensions:.
         /// </summary>
         public static string AddPresetView_SavePictureSize {
             get {
@@ -1065,6 +1065,15 @@ namespace HandBrakeWPF.Properties {
         public static string MainView_Stop {
             get {
                 return ResourceManager.GetString("MainView_Stop", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Please choose a source to encode before trying to import a subtitle file..
+        /// </summary>
+        public static string MainView_SubtitleBeforeScanError {
+            get {
+                return ResourceManager.GetString("MainView_SubtitleBeforeScanError", resourceCulture);
             }
         }
         

@@ -800,7 +800,7 @@ static int avformatInit( hb_mux_object_t * m )
                 }
                 else
                 {
-                    track->st->codecpar->codec_id = AV_CODEC_ID_SSA;
+                    track->st->codecpar->codec_id = AV_CODEC_ID_ASS;
                     need_fonts = 1;
 
                     if (subtitle->extradata_size)
@@ -1197,10 +1197,12 @@ static int avformatMux(hb_mux_object_t *m, hb_mux_data_t *track, hb_buffer_t *bu
         {
             pkt.flags |= AV_PKT_FLAG_KEY;
         }
+#ifdef AV_PKT_FLAG_DISPOSABLE
         if (!(buf->s.flags & HB_FLAG_FRAMETYPE_REF))
         {
             pkt.flags |= AV_PKT_FLAG_DISPOSABLE;
         }
+#endif
     }
     else if (buf->s.frametype & HB_FRAME_MASK_KEY)
     {
@@ -1313,7 +1315,7 @@ static int avformatMux(hb_mux_object_t *m, hb_mux_data_t *track, hb_buffer_t *bu
                     free(styleatom);
                 }
             }
-            if (track->st->codecpar->codec_id == AV_CODEC_ID_SSA &&
+            if (track->st->codecpar->codec_id == AV_CODEC_ID_ASS &&
                 job->mux == HB_MUX_AV_MKV)
             {
                 // avformat requires the this additional information

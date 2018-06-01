@@ -169,6 +169,7 @@ namespace HandBrakeWPF.ViewModels
             IFiltersViewModel filtersViewModel, IAudioViewModel audioViewModel, ISubtitlesViewModel subtitlesViewModel,
             IX264ViewModel advancedViewModel, IChaptersViewModel chaptersViewModel, IStaticPreviewViewModel staticPreviewViewModel,
             IQueueViewModel queueViewModel, IMetaDataViewModel metaDataViewModel, INotifyIconService notifyIconService)
+            : base(userSettingService)
         {
             this.scanService = scanService;
             this.presetService = presetService;
@@ -791,6 +792,7 @@ namespace HandBrakeWPF.ViewModels
                             this.Destination = AutoNameHelper.AutoName(this.CurrentTask, this.SourceName, this.selectedPreset);
                         }
                     }
+
                     this.NotifyOfPropertyChange(() => this.CurrentTask);
 
                     this.Duration = this.DurationCalculation();
@@ -1490,6 +1492,15 @@ namespace HandBrakeWPF.ViewModels
                 return false;
             }
 
+            if (File.Exists(this.CurrentTask.Destination))
+            {
+                MessageBoxResult result = this.errorService.ShowMessageBox(string.Format(Resources.Main_QueueOverwritePrompt, Path.GetFileName(this.CurrentTask.Destination)), Resources.Question, MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (result == MessageBoxResult.No)
+                {
+                    return false;
+                }           
+            }
+
             if (!DirectoryUtilities.IsWritable(Path.GetDirectoryName(this.CurrentTask.Destination), true, this.errorService))
             {
                 this.errorService.ShowMessageBox(Resources.Main_NoPermissionsOrMissingDirectory, Resources.Error, MessageBoxButton.OK, MessageBoxImage.Error);
@@ -1556,9 +1567,10 @@ namespace HandBrakeWPF.ViewModels
 
             if (this.CurrentTask != null && this.CurrentTask.SubtitleTracks != null && this.CurrentTask.SubtitleTracks.Count > 0)
             {
-                if (this.SubtitleViewModel.SubtitleBehaviours == null || this.SubtitleViewModel.SubtitleBehaviours.SelectedBehaviour == SubtitleBehaviourModes.None)
+                if ((this.SubtitleViewModel.SubtitleBehaviours == null || this.SubtitleViewModel.SubtitleBehaviours.SelectedBehaviour == SubtitleBehaviourModes.None)
+                    && !(this.CurrentTask.SubtitleTracks.Count == 1 && this.CurrentTask.SubtitleTracks.First().SubtitleType == SubtitleType.ForeignAudioSearch))
                 {
-                    System.Windows.MessageBoxResult result = this.errorService.ShowMessageBox(
+                    MessageBoxResult result = this.errorService.ShowMessageBox(
                         Resources.Main_AutoAdd_AudioAndSubWarning,
                         Resources.Warning,
                         MessageBoxButton.YesNo,
@@ -1574,7 +1586,15 @@ namespace HandBrakeWPF.ViewModels
             foreach (Title title in this.ScannedSource.Titles)
             {
                 this.SelectedTitle = title;
-                this.AddToQueue();
+                if (!this.AddToQueue())
+                {
+                   MessageBoxResult result = this.errorService.ShowMessageBox(Resources.Main_ContinueAddingToQueue, Resources.Question, MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                    if (result == MessageBoxResult.No)
+                    {
+                        break;
+                    }
+                }
             }
         }
 
@@ -1637,10 +1657,19 @@ namespace HandBrakeWPF.ViewModels
         public void FileScan()
         {
             OpenFileDialog dialog = new OpenFileDialog { Filter = "All files (*.*)|*.*" };
+
+            string mruDir = this.GetMru(Constants.FileScanMru);
+            if (!string.IsNullOrEmpty(mruDir))
+            {
+                dialog.InitialDirectory = mruDir;
+            }
+
             bool? dialogResult = dialog.ShowDialog();
 
             if (dialogResult.HasValue && dialogResult.Value)
             {
+                this.SetMru(Constants.FileScanMru, Path.GetDirectoryName(dialog.FileName));
+
                 this.StartScan(dialog.FileName, this.TitleSpecificScan);
             }
         }
@@ -1813,7 +1842,29 @@ namespace HandBrakeWPF.ViewModels
                 string[] fileNames = e.Data.GetData(DataFormats.FileDrop, true) as string[];
                 if (fileNames != null && fileNames.Any() && (File.Exists(fileNames[0]) || Directory.Exists(fileNames[0])))
                 {
-                    this.StartScan(fileNames[0], 0);
+                    string videoContent = fileNames.FirstOrDefault(f => Path.GetExtension(f)?.ToLower() != ".srt");
+                    if (!string.IsNullOrEmpty(videoContent))
+                    {
+                        this.StartScan(videoContent, 0);
+                        return;
+                    }
+
+                    if (this.SelectedTitle == null)
+                    {
+                        MessageBox.Show(
+                            ResourcesUI.MainView_SubtitleBeforeScanError,
+                            Resources.Error,
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error);
+                    }
+
+                    // StartScan is not synchronous, so for now we don't support adding both srt and video file at the same time. 
+                    string[] subtitleFiles = fileNames.Where(f => Path.GetExtension(f)?.ToLower() == ".srt").ToArray();
+                    if (subtitleFiles.Any())
+                    {
+                        this.SwitchTab(5);
+                        this.SubtitleViewModel.Import(subtitleFiles);
+                    }
                 }
             }
 
@@ -1847,6 +1898,13 @@ namespace HandBrakeWPF.ViewModels
                                              ? (extension == ".mp4" || extension == ".m4v" ? 1 : 2)
                                              : (this.CurrentTask.OutputFormat == OutputFormat.Mkv ? 2 : 0);
 
+            string mruDir = this.GetMru(Constants.FileSaveMru);
+            if (!string.IsNullOrEmpty(mruDir))
+            {
+                saveFileDialog.InitialDirectory = mruDir;
+            }
+
+            // If we have a current directory, override the MRU.
             if (this.CurrentTask != null && !string.IsNullOrEmpty(this.CurrentTask.Destination))
             {
                 if (Directory.Exists(Path.GetDirectoryName(this.CurrentTask.Destination)))
@@ -1860,6 +1918,8 @@ namespace HandBrakeWPF.ViewModels
             bool? result = saveFileDialog.ShowDialog();
             if (result.HasValue && result.Value)
             {
+                this.SetMru(Constants.FileSaveMru, Path.GetDirectoryName(saveFileDialog.FileName));
+
                 if (saveFileDialog.FileName == this.ScannedSource.ScanPath)
                 {
                     this.errorService.ShowMessageBox(Resources.Main_SourceDestinationMatchError, Resources.Error, MessageBoxButton.OK, MessageBoxImage.Error);
@@ -2728,7 +2788,6 @@ namespace HandBrakeWPF.ViewModels
                 this.NotifyOfPropertyChange(() => this.ShowAdvancedTab);
             }
         }
-
         #endregion
     }
 }

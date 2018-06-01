@@ -97,7 +97,7 @@ static int encavcodecaInit(hb_work_object_t *w, hb_job_t *job)
                     profile = FF_PROFILE_AAC_LOW;
                     break;
             }
-            // Libav's libfdk-aac wrapper expects back channels for 5.1
+            // FFmpeg's libfdk-aac wrapper expects back channels for 5.1
             // audio, and will error out unless we translate the layout
             if (channel_layout == AV_CH_LAYOUT_5POINT1)
                 channel_layout  = AV_CH_LAYOUT_5POINT1_BACK;
@@ -130,7 +130,7 @@ static int encavcodecaInit(hb_work_object_t *w, hb_job_t *job)
 
         case HB_ACODEC_OPUS:
             codec_name = "libopus";
-            // Libav's libopus wrapper expects back channels for 5.1
+            // FFmpeg's libopus wrapper expects back channels for 5.1
             // audio, and will error out unless we translate the layout
             if (channel_layout == AV_CH_LAYOUT_5POINT1)
                 channel_layout  = AV_CH_LAYOUT_5POINT1_BACK;
@@ -308,10 +308,10 @@ static void encavcodecaClose(hb_work_object_t * w)
         {
             Finalize(w);
             hb_deep_log(2, "encavcodecaudio: closing libavcodec");
-            if (pv->context->codec != NULL)
+            if (pv->context->codec != NULL) {
                 avcodec_flush_buffers(pv->context);
-            hb_avcodec_close(pv->context);
-            av_free( pv->context );
+            }
+            hb_avcodec_free_context(&pv->context);
         }
 
         if (pv->output_buf != NULL)

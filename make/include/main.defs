@@ -50,6 +50,7 @@ ifneq (,$(filter $(BUILD.system),darwin cygwin mingw))
     MODULES += contrib/libogg
     MODULES += contrib/libvorbis
     MODULES += contrib/libopus
+    MODULES += contrib/libspeex
     MODULES += contrib/libtheora
     MODULES += contrib/libsamplerate
     MODULES += contrib/lame
@@ -97,9 +98,16 @@ ifeq (1,$(FEATURE.qsv))
     MODULES += contrib/libmfx
 endif
 
+ifneq (,$(filter $(BUILD.system),darwin))
+    MODULES += contrib/xz
+endif
+
 ifneq (,$(filter $(BUILD.system),cygwin mingw))
 ifneq ($(HAS.iconv),1)
     MODULES += contrib/libiconv
+endif
+ifneq ($(HAS.xz),1)
+    MODULES += contrib/xz
 endif
 ifneq ($(HAS.libz),1)
     MODULES += contrib/zlib

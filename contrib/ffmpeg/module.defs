@@ -1,7 +1,4 @@
-__deps__ := YASM BZIP2 ZLIB FDKAAC LIBVPX LAME LIBOPUS
-ifeq (1-mingw,$(BUILD.cross)-$(BUILD.system))
-__deps__ += PTHREADW32
-endif
+__deps__ := YASM BZIP2 ZLIB FDKAAC LIBVPX LAME LIBOPUS LIBSPEEX XZ
 ifeq (1,$(FEATURE.qsv))
 __deps__ += LIBMFX
 endif
@@ -13,9 +10,9 @@ __deps__ += X264
 $(eval $(call import.MODULE.defs,FFMPEG,ffmpeg,$(__deps__)))
 $(eval $(call import.CONTRIB.defs,FFMPEG))
 
-FFMPEG.FETCH.url    = https://download.handbrake.fr/handbrake/contrib/libav-12.3.tar.gz
-FFMPEG.FETCH.url   += https://libav.org/releases/libav-12.3.tar.gz
-FFMPEG.FETCH.sha256 = 115b659022dd387f662e26fbc5bc0cc14ec18daa100003ffd34f4da0479b272e
+FFMPEG.FETCH.url  = https://download.handbrake.fr/handbrake/contrib/ffmpeg-4.0.tar.bz2
+FFMPEG.FETCH.url += https://www.ffmpeg.org/releases/ffmpeg-4.0.tar.bz2
+FFMPEG.FETCH.sha256 = 318a39d906c9107d49766c63787798dd078d2a36e6670a9dfeda3c55be4573b8
 
 FFMPEG.CONFIGURE.deps  =
 FFMPEG.CONFIGURE.host  =
@@ -28,9 +25,7 @@ FFMPEG.CONFIGURE.extra = \
     --disable-doc \
     --disable-bsfs \
     --enable-bsf=aac_adtstoasc \
-    --disable-avconv \
-    --disable-avplay \
-    --disable-avprobe \
+    --disable-programs \
     --disable-avdevice \
     --disable-muxers \
     --disable-network \
@@ -38,6 +33,7 @@ FFMPEG.CONFIGURE.extra = \
     --disable-vaapi \
     --disable-vdpau \
     --disable-encoders \
+    --enable-avresample \
     --enable-libmp3lame \
     --enable-encoder=aac \
     --enable-encoder=ac3 \
@@ -48,14 +44,15 @@ FFMPEG.CONFIGURE.extra = \
     --enable-encoder=libmp3lame \
     --enable-libopus \
     --enable-encoder=libopus \
+    --enable-libspeex \
+    --disable-encoder=libspeex \
+    --enable-decoder=libspeex \
     --enable-libvpx \
+    --disable-decoder=libvpx_* \
     --enable-encoder=libvpx_vp8 \
-    --disable-decoder=libvpx_vp8 \
     --enable-encoder=libvpx_vp9 \
-    --disable-decoder=libvpx_vp9 \
-    --enable-zlib \
-    --enable-bzlib \
-    --enable-pthreads \
+    --disable-decoder=*_crystalhd \
+    --enable-lzma \
     --cc="$(FFMPEG.GCC.gcc)" \
     --extra-ldflags="$(call fn.ARGS,FFMPEG.GCC,*archs *sysroot *minver ?extra) -L$(call fn.ABSOLUTE,$(CONTRIB.build/)lib)"
 
@@ -74,17 +71,18 @@ FFMPEG.CONFIGURE.extra += \
     --enable-muxer=psp \
     --enable-muxer=ipod
 
+ifeq (darwin,$(BUILD.system))
+    FFMPEG.CONFIGURE.extra += --disable-audiotoolbox --disable-coreimage --disable-videotoolbox
+endif
+
 ## check against tuple: B-SYSTEM where B is { 0 | 1 } for cross-compiling flag
 ifeq (0-cygwin,$(BUILD.cross)-$(BUILD.system))
     FFMPEG.GCC.args.extra += -fno-common
-else ifeq (darwin,$(BUILD.system))
-    ## section for darwin-archs
-    FFMPEG.CONFIGURE.extra += --enable-cross-compile --arch=$(BUILD.machine) --target-os=darwin
 else ifeq (1-mingw,$(BUILD.cross)-$(BUILD.system))
     FFMPEG.CONFIGURE.extra += \
         --target-os=mingw32 \
         --arch=$(BUILD.machine) \
-        --enable-cross-compile --cross-prefix=$(BUILD.cross.prefix)
+        --cross-prefix=$(BUILD.cross.prefix)
     FFMPEG.GCC.args.extra += -fno-common
     ifeq (1,$(FEATURE.local_pkgconfig))
         FFMPEG.CONFIGURE.extra += --pkg-config="$(call fn.ABSOLUTE,$(CONTRIB.build/)bin/$(PKGCONFIG.exe))"
@@ -115,14 +113,6 @@ endif
 
 ## enable compile verbosity
 FFMPEG.BUILD.extra = V=1
-
-# 32-bit intel
-ifneq (,$(filter $(BUILD.machine),i386 i486 i586 i686))
-    # avoid running out of registers
-    FFMPEG.GCC.args.extra += -fomit-frame-pointer
-    # avoid 'asm' operand has impossible constraints errors
-    FFMPEG.CONFIGURE.extra += --disable-inline-asm
-endif
 
 ## For POSIX.1-2001
 ifeq (solaris,$(BUILD.system))

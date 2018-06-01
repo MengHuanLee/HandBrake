@@ -14,10 +14,10 @@ TEST.GCC.L = $(CONTRIB.build/)lib
 TEST.libs = $(LIBHB.a)
 
 TEST.GCC.l = \
-        ass avresample avformat avcodec avfilter avutil mp3lame dvdnav \
+        ass avresample avformat avfilter avcodec avutil swresample postproc mp3lame dvdnav \
         dvdread fribidi \
         samplerate swscale vpx theoraenc theoradec vorbis vorbisenc ogg x264 \
-        bluray freetype xml2 bz2 z jansson harfbuzz opus
+        bluray freetype xml2 bz2 z jansson harfbuzz opus speex lzma
 
 ifeq (,$(filter $(BUILD.system),darwin cygwin mingw))
     TEST.GCC.l += fontconfig
@@ -78,7 +78,7 @@ ifeq (1,$(HAS.pthread))
 else
     TEST.GCC.l += pthreadGC2
 endif
-    TEST.GCC.l += iconv ws2_32 regex uuid ole32
+    TEST.GCC.l += bcrypt iconv ws2_32 regex uuid ole32
     TEST.GCC.D += PTW32_STATIC_LIB
     TEST.GCC.args.extra.exe++ += -static
 endif #   (1-mingw,$(BUILD.cross)-$(BUILD.system))

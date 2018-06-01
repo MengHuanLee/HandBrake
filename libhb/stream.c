@@ -4191,7 +4191,7 @@ static void hb_ts_resolve_pid_types(hb_stream_t *stream)
             continue;
         }
         // 0xa2 is DTS-HD LBR used in HD-DVD and bluray for
-        // secondary audio streams. Libav can not decode yet.
+        // secondary audio streams. FFmpeg can not decode yet.
         // Having it in the audio list causes delays during scan
         // while we try to get stream parameters. So skip
         // this type for now.
@@ -5315,7 +5315,7 @@ static void add_ffmpeg_subtitle( hb_title_t *title, hb_stream_t *stream, int id 
                         "subtitle colors likely to be wrong" );
             break;
         case AV_CODEC_ID_TEXT:
-        case AV_CODEC_ID_SRT:
+        case AV_CODEC_ID_SUBRIP:
             subtitle->format = TEXTSUB;
             subtitle->source = UTF8SUB;
             subtitle->config.dest = PASSTHRUSUB;
@@ -5327,7 +5327,7 @@ static void add_ffmpeg_subtitle( hb_title_t *title, hb_stream_t *stream, int id 
             subtitle->config.dest = PASSTHRUSUB;
             subtitle->codec = WORK_DECTX3GSUB;
             break;
-        case AV_CODEC_ID_SSA:
+        case AV_CODEC_ID_ASS:
             subtitle->format = TEXTSUB;
             subtitle->source = SSASUB;
             subtitle->config.dest = PASSTHRUSUB;
@@ -5403,7 +5403,7 @@ static void add_ffmpeg_attachment( hb_title_t *title, hb_stream_t *stream, int i
     switch ( codecpar->codec_id )
     {
         case AV_CODEC_ID_TTF:
-            // Libav sets codec ID based on mime type of the attachment
+            // FFmpeg sets codec ID based on mime type of the attachment
             type = FONT_TTF_ATTACH;
             break;
         default:
@@ -5802,7 +5802,7 @@ hb_buffer_t * hb_ffmpeg_read( hb_stream_t *stream )
     else
     {
         // sometimes we get absurd sizes from ffmpeg
-        if ( stream->ffmpeg_pkt.size >= (1 << 25) )
+        if ( stream->ffmpeg_pkt.size >= (1 << 27) )
         {
             hb_log( "ffmpeg_read: pkt too big: %d bytes", stream->ffmpeg_pkt.size );
             av_packet_unref(&stream->ffmpeg_pkt);
@@ -5852,7 +5852,7 @@ hb_buffer_t * hb_ffmpeg_read( hb_stream_t *stream )
      * either field. This is not a problem because the VOB decoder can extract this
      * information from the packet payload itself.
      *
-     * SSA subtitles (AV_CODEC_ID_SSA) do not have their duration stored in
+     * SSA subtitles (AV_CODEC_ID_ASS) do not have their duration stored in
      * either field. This is not a problem because the SSA decoder can extract this
      * information from the packet payload itself.
      */
@@ -5888,7 +5888,7 @@ hb_buffer_t * hb_ffmpeg_read( hb_stream_t *stream )
             break;
     }
     if ( ffmpeg_pkt_codec == AV_CODEC_ID_TEXT ||
-         ffmpeg_pkt_codec == AV_CODEC_ID_SRT  ||
+         ffmpeg_pkt_codec == AV_CODEC_ID_SUBRIP  ||
          ffmpeg_pkt_codec == AV_CODEC_ID_MOV_TEXT ) {
         int64_t ffmpeg_pkt_duration = stream->ffmpeg_pkt.duration;
         int64_t buf_duration = av_to_hb_pts( ffmpeg_pkt_duration, tsconv, 0 );

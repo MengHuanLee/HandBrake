@@ -10,7 +10,7 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace HandBrake.ApplicationServices.Services.Logging
+namespace HandBrakeWPF.Services.Logging
 {
     using System;
     using System.Collections.Generic;
@@ -19,9 +19,14 @@ namespace HandBrake.ApplicationServices.Services.Logging
     using System.Linq;
     using System.Text;
 
-    using HandBrake.ApplicationServices.Services.Logging.EventArgs;
-    using HandBrake.ApplicationServices.Services.Logging.Interfaces;
-    using HandBrake.ApplicationServices.Services.Logging.Model;
+    using HandBrake.ApplicationServices.Interop;
+    using HandBrake.ApplicationServices.Interop.EventArgs;
+
+    using ILog = Interfaces.ILog;
+    using LogEventArgs = EventArgs.LogEventArgs;
+    using LogLevel = Model.LogLevel;
+    using LogMessage = Model.LogMessage;
+    using LogMessageType = Model.LogMessageType;
 
     /// <summary>
     /// The log helper.
@@ -45,6 +50,12 @@ namespace HandBrake.ApplicationServices.Services.Logging
         private bool isDiskLoggingEnabled;
         private StreamWriter fileWriter;
         private string logHeader;
+
+        public LogService()
+        {
+            HandBrakeUtils.MessageLogged += this.HandBrakeUtils_MessageLogged;
+            HandBrakeUtils.ErrorLogged += this.HandBrakeUtils_ErrorLogged;
+        }
 
         /// <summary>
         /// Fires when a new QueueTask starts
@@ -285,35 +296,6 @@ namespace HandBrake.ApplicationServices.Services.Logging
         }
 
         /// <summary>
-        /// Helper method for logging content to disk
-        /// </summary>
-        /// <param name="msg">
-        /// Log message to write.
-        /// </param>
-        private void LogMessageToDisk(LogMessage msg)
-        {
-            if (!this.isDiskLoggingEnabled)
-            {
-                return;
-            }
-
-            try
-            {
-                lock (this.fileWriterLock)
-                {
-                    if (this.fileWriter != null && this.fileWriter.BaseStream.CanWrite)
-                    {
-                        this.fileWriter.WriteLine(msg.Content);
-                    }
-                }
-            }
-            catch (Exception exc)
-            {
-                Debug.WriteLine(exc); // This exception doesn't warrant user interaction, but it should be logged
-            }
-        }
-
-        /// <summary>
         /// Called when a log message is created.
         /// </summary>
         /// <param name="msg">
@@ -359,6 +341,55 @@ namespace HandBrake.ApplicationServices.Services.Logging
         protected virtual void OnLogReset()
         {
             this.LogReset?.Invoke(this, System.EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Helper method for logging content to disk
+        /// </summary>
+        /// <param name="msg">
+        /// Log message to write.
+        /// </param>
+        private void LogMessageToDisk(LogMessage msg)
+        {
+            if (!this.isDiskLoggingEnabled)
+            {
+                return;
+            }
+
+            try
+            {
+                lock (this.fileWriterLock)
+                {
+                    if (this.fileWriter != null && this.fileWriter.BaseStream.CanWrite)
+                    {
+                        this.fileWriter.WriteLine(msg.Content);
+                    }
+                }
+            }
+            catch (Exception exc)
+            {
+                Debug.WriteLine(exc); // This exception doesn't warrant user interaction, but it should be logged
+            }
+        }
+
+        private void HandBrakeUtils_ErrorLogged(object sender, MessageLoggedEventArgs e)
+        {
+            if (e == null || string.IsNullOrEmpty(e.Message))
+            {
+                return;
+            }
+
+            this.LogMessage(e.Message, LogMessageType.ScanOrEncode, LogLevel.Error);
+        }
+
+        private void HandBrakeUtils_MessageLogged(object sender, MessageLoggedEventArgs e)
+        {
+            if (e == null || string.IsNullOrEmpty(e.Message))
+            {
+                return;
+            }
+
+            this.LogMessage(e.Message, LogMessageType.ScanOrEncode, LogLevel.Info);
         }
     }
 }

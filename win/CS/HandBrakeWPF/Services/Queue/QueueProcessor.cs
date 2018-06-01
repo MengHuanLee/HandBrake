@@ -17,8 +17,6 @@ namespace HandBrakeWPF.Services.Queue
     using System.Xml.Serialization;
 
     using HandBrake.ApplicationServices.Model;
-    using HandBrake.ApplicationServices.Services.Logging;
-    using HandBrake.ApplicationServices.Services.Logging.Model;
     using HandBrake.ApplicationServices.Utilities;
 
     using HandBrakeWPF.Factories;
@@ -33,6 +31,9 @@ namespace HandBrakeWPF.Services.Queue
     using Execute = Caliburn.Micro.Execute;
     using GeneralApplicationException = HandBrakeWPF.Exceptions.GeneralApplicationException;
     using IEncode = HandBrakeWPF.Services.Encode.Interfaces.IEncode;
+    using LogLevel = HandBrakeWPF.Services.Logging.Model.LogLevel;
+    using LogMessageType = HandBrakeWPF.Services.Logging.Model.LogMessageType;
+    using LogService = HandBrakeWPF.Services.Logging.LogService;
     using QueueCompletedEventArgs = HandBrakeWPF.EventArgs.QueueCompletedEventArgs;
     using QueueProgressEventArgs = HandBrakeWPF.EventArgs.QueueProgressEventArgs;
 
@@ -575,8 +576,8 @@ namespace HandBrakeWPF.Services.Queue
             else
             {
                 this.EncodeService.EncodeCompleted -= this.EncodeServiceEncodeCompleted;
-                this.OnQueueCompleted(new QueueCompletedEventArgs(true));
                 this.BackupQueue(string.Empty);
+                this.OnQueueCompleted(new QueueCompletedEventArgs(true));
             }
         }
 
@@ -660,17 +661,18 @@ namespace HandBrakeWPF.Services.Queue
                 this.InvokeQueueChanged(EventArgs.Empty);
                 this.InvokeJobProcessingStarted(new QueueProgressEventArgs(job));
                 this.EncodeService.Start(job.Task, job.Configuration);
+                this.BackupQueue(string.Empty);
             }
             else
             {
                 // No more jobs to process, so unsubscribe the event
                 this.EncodeService.EncodeCompleted -= this.EncodeServiceEncodeCompleted;
 
+                this.BackupQueue(string.Empty);
+
                 // Fire the event to tell connected services.
                 this.OnQueueCompleted(new QueueCompletedEventArgs(false));
             }
-
-            this.BackupQueue(string.Empty);
         }
 
         #endregion

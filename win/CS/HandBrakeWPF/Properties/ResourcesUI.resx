@@ -232,7 +232,7 @@
     <value>Name:</value>
   </data>
   <data name="AddPresetView_SavePictureSize" xml:space="preserve">
-    <value>Save Picture Size:</value>
+    <value>Dimensions:</value>
   </data>
   <data name="Generic_Cancel" xml:space="preserve">
     <value>Cancel</value>
@@ -1024,5 +1024,8 @@ This will not affect your current settings in the Subtitle tab.</value>
   </data>
   <data name="OptionsView_ShowPreviewOnSummaryTab" xml:space="preserve">
     <value>Show previews on summary tab.</value>
+  </data>
+  <data name="MainView_SubtitleBeforeScanError" xml:space="preserve">
+    <value>Please choose a source to encode before trying to import a subtitle file.</value>
   </data>
 </root>
